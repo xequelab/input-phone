@@ -280,9 +280,9 @@ export default {
     border: 1px solid #e5e7eb;
     border-radius: 8px;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    z-index: 9999;
+    z-index: 99999;
     min-width: 280px;
-    overflow: hidden;
+    overflow: visible;
 
     .search-container {
       position: relative;

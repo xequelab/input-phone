@@ -58,7 +58,6 @@
         :id="`phone-input-${uid}`"
         type="tel"
         class="phone-input"
-        :value="localInputValue"
         :placeholder="effectivePlaceholder"
         :disabled="disabled"
         :readonly="readonly"
@@ -308,13 +307,17 @@ export default {
       const inputElement = event.target;
       const newValue = inputElement.value;
       const oldCursorPosition = inputElement.selectionStart;
+      const oldValue = localInputValue.value;
 
       // Extract only digits
       const digits = getDigitsOnly(newValue);
 
-      // Check max length
+      // Check max length - prevent input if exceeds
       if (currentCountry.value && digits.length > currentCountry.value.maxLength) {
-        return; // Don't allow more digits than max
+        // Restore old value and cursor position
+        inputElement.value = oldValue;
+        inputElement.setSelectionRange(oldCursorPosition - 1, oldCursorPosition - 1);
+        return;
       }
 
       // Update raw value
@@ -325,8 +328,11 @@ export default {
         ? formatPhoneNumber(digits, currentCountry.value.format)
         : digits;
 
-      // Update local input value (critical for formatting to work)
+      // Update local input value
       localInputValue.value = formatted;
+
+      // Update the input element value immediately
+      inputElement.value = formatted;
 
       // Update international number
       const intlNumber = buildInternationalNumber(
@@ -351,9 +357,11 @@ export default {
         });
       }
 
-      // Restore cursor position after formatting
+      // Calculate and set cursor position
+      const newCursorPosition = getNewCursorPosition(oldValue, formatted, oldCursorPosition);
+
+      // Use nextTick to ensure DOM is updated
       setTimeout(() => {
-        const newCursorPosition = getNewCursorPosition(localInputValue.value, formatted, oldCursorPosition);
         inputElement.setSelectionRange(newCursorPosition, newCursorPosition);
       }, 0);
     };
@@ -497,6 +505,11 @@ export default {
       if (props.content?.value) {
         setValue(props.content.value);
       }
+
+      // Set initial input value
+      if (phoneInputRef.value) {
+        phoneInputRef.value.value = localInputValue.value;
+      }
     });
 
     // Watch for external value changes
@@ -516,6 +529,10 @@ export default {
     // Sync localInputValue with displayValue
     watch(displayValue, (newValue) => {
       localInputValue.value = newValue;
+      // Also update the input element value
+      if (phoneInputRef.value && document.activeElement !== phoneInputRef.value) {
+        phoneInputRef.value.value = newValue;
+      }
     }, { immediate: true });
 
     return {
@@ -590,7 +607,7 @@ export default {
     border-style: solid;
     transition: all 0.2s ease;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
 
     &.focused {
       box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
