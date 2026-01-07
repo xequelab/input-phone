@@ -58,7 +58,7 @@
         :id="`phone-input-${uid}`"
         type="tel"
         class="phone-input"
-        :value="displayValue"
+        :value="localInputValue"
         :placeholder="effectivePlaceholder"
         :disabled="disabled"
         :readonly="readonly"
@@ -123,6 +123,7 @@ export default {
     const phoneInputRef = ref(null);
     const isFocused = ref(false);
     const hasBlurred = ref(false);
+    const localInputValue = ref('');
 
     // Detect if in editor mode
     const isEditing = computed(() => {
@@ -306,7 +307,6 @@ export default {
 
       const inputElement = event.target;
       const newValue = inputElement.value;
-      const oldValue = displayValue.value;
       const oldCursorPosition = inputElement.selectionStart;
 
       // Extract only digits
@@ -319,6 +319,14 @@ export default {
 
       // Update raw value
       setRawValue(digits);
+
+      // Format the number
+      const formatted = autoFormat.value && currentCountry.value
+        ? formatPhoneNumber(digits, currentCountry.value.format)
+        : digits;
+
+      // Update local input value (critical for formatting to work)
+      localInputValue.value = formatted;
 
       // Update international number
       const intlNumber = buildInternationalNumber(
@@ -335,7 +343,7 @@ export default {
         emit('trigger-event', {
           name: 'change',
           event: {
-            value: displayValue.value,
+            value: formatted,
             rawValue: digits,
             countryCode: selectedCountryCode.value,
             isValid: valid
@@ -344,13 +352,10 @@ export default {
       }
 
       // Restore cursor position after formatting
-      if (autoFormat.value) {
-        setTimeout(() => {
-          const formatted = formatPhoneNumber(digits, currentCountry.value?.format || '');
-          const newCursorPosition = getNewCursorPosition(oldValue, formatted, oldCursorPosition);
-          inputElement.setSelectionRange(newCursorPosition, newCursorPosition);
-        }, 0);
-      }
+      setTimeout(() => {
+        const newCursorPosition = getNewCursorPosition(localInputValue.value, formatted, oldCursorPosition);
+        inputElement.setSelectionRange(newCursorPosition, newCursorPosition);
+      }, 0);
     };
 
     const handleFocus = () => {
@@ -466,6 +471,7 @@ export default {
       setInternationalNumber('');
       setIsValid(false);
       hasBlurred.value = false;
+      localInputValue.value = '';
     };
 
     const focusInput = () => {
@@ -507,8 +513,14 @@ export default {
       }
     });
 
+    // Sync localInputValue with displayValue
+    watch(displayValue, (newValue) => {
+      localInputValue.value = newValue;
+    }, { immediate: true });
+
     return {
       phoneInputRef,
+      localInputValue,
       isFocused,
       hasBlurred,
       isEditing,

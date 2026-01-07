@@ -18,13 +18,15 @@
       </svg>
     </button>
 
-    <!-- Dropdown -->
-    <transition name="dropdown">
-      <div
-        v-if="isOpen"
-        class="dropdown"
-        :style="dropdownStyle"
-      >
+    <!-- Dropdown - Teleported to body -->
+    <Teleport to="body">
+      <transition name="dropdown">
+        <div
+          v-if="isOpen"
+          ref="dropdownRef"
+          class="dropdown"
+          :style="dropdownStyle"
+        >
         <!-- Search Input -->
         <div v-if="enableSearch" class="search-container">
           <svg class="search-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -66,8 +68,9 @@
             No countries found
           </div>
         </div>
-      </div>
-    </transition>
+        </div>
+      </transition>
+    </Teleport>
   </div>
 </template>
 
@@ -112,6 +115,7 @@ export default {
     const isOpen = ref(false);
     const searchQuery = ref('');
     const selectorRef = ref(null);
+    const dropdownRef = ref(null);
     const searchInputRef = ref(null);
     const listRef = ref(null);
 
@@ -175,7 +179,8 @@ export default {
 
     // Click outside to close
     const handleClickOutside = (event) => {
-      if (selectorRef.value && !selectorRef.value.contains(event.target)) {
+      if (selectorRef.value && !selectorRef.value.contains(event.target) &&
+          dropdownRef.value && !dropdownRef.value.contains(event.target)) {
         closeDropdown();
       }
     };
@@ -202,6 +207,7 @@ export default {
       isOpen,
       searchQuery,
       selectorRef,
+      dropdownRef,
       searchInputRef,
       listRef,
       selectedCountry,
