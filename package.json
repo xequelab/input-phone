@@ -1,0 +1,23 @@
+{
+  "name": "ww-international-phone",
+  "version": "1.0.0",
+  "description": "International phone input component for WeWeb with country selection and auto-formatting",
+  "main": "src/wwElement.vue",
+  "scripts": {
+    "build": "weweb build",
+    "serve": "weweb serve"
+  },
+  "keywords": [
+    "weweb",
+    "component",
+    "phone",
+    "telephone",
+    "international",
+    "country-code",
+    "input",
+    "form",
+    "validation"
+  ],
+  "author": "",
+  "license": "MIT"
+}
