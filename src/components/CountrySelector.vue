@@ -124,6 +124,8 @@ export default {
       return searchCountries(searchQuery.value);
     });
 
+    const dropdownPosition = ref({ top: '0px', left: '0px' });
+
     const buttonStyle = computed(() => ({
       width: props.width,
       backgroundColor: props.backgroundColor
@@ -131,11 +133,26 @@ export default {
 
     const dropdownStyle = computed(() => ({
       '--hover-bg': props.hoverBackgroundColor,
-      maxHeight: props.maxHeight
+      maxHeight: props.maxHeight,
+      top: dropdownPosition.value.top,
+      left: dropdownPosition.value.left
     }));
+
+    const updateDropdownPosition = () => {
+      if (selectorRef.value) {
+        const rect = selectorRef.value.getBoundingClientRect();
+        dropdownPosition.value = {
+          top: `${rect.bottom + 4}px`,
+          left: `${rect.left}px`
+        };
+      }
+    };
 
     const toggleDropdown = () => {
       if (props.disabled) return;
+      if (!isOpen.value) {
+        updateDropdownPosition();
+      }
       isOpen.value = !isOpen.value;
     };
 
@@ -252,14 +269,12 @@ export default {
   }
 
   .dropdown {
-    position: absolute;
-    top: calc(100% + 4px);
-    left: 0;
+    position: fixed;
     background: white;
     border: 1px solid #e5e7eb;
     border-radius: 8px;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    z-index: 1000;
+    z-index: 9999;
     min-width: 280px;
     overflow: hidden;
 

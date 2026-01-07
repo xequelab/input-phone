@@ -302,7 +302,7 @@ export default {
 
     // Event handlers
     const handleInput = (event) => {
-      if (isEditing.value || disabled.value || readonly.value) return;
+      if (disabled.value || readonly.value) return;
 
       const inputElement = event.target;
       const newValue = inputElement.value;
@@ -330,16 +330,18 @@ export default {
       // Validate
       const valid = validatePhoneNumber();
 
-      // Emit change event
-      emit('trigger-event', {
-        name: 'change',
-        event: {
-          value: displayValue.value,
-          rawValue: digits,
-          countryCode: selectedCountryCode.value,
-          isValid: valid
-        }
-      });
+      // Emit change event (only in preview/published)
+      if (!isEditing.value) {
+        emit('trigger-event', {
+          name: 'change',
+          event: {
+            value: displayValue.value,
+            rawValue: digits,
+            countryCode: selectedCountryCode.value,
+            isValid: valid
+          }
+        });
+      }
 
       // Restore cursor position after formatting
       if (autoFormat.value) {
