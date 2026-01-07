@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phone Input Test</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 40px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #333;
+    }
+    .test-container {
+      margin-top: 30px;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #f9f9f9;
+    }
+    .debug {
+      margin-top: 20px;
+      padding: 15px;
+      background: white;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    .debug div {
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>International Phone Input - Test</h1>
+
+  <div id="app">
+    <div class="test-container">
+      <h2>Test Input</h2>
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Phone Number</label>
+        <input
+          type="tel"
+          v-model="phoneModel"
+          placeholder="(11) 99999-9999"
+          style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px;"
+          @input="onInput"
+        />
+      </div>
+
+      <div class="debug">
+        <h3 style="margin-top: 0;">Debug Info:</h3>
+        <div><strong>Raw Input:</strong> {{ rawInput }}</div>
+        <div><strong>Digits Only:</strong> {{ digitsOnly }}</div>
+        <div><strong>Formatted:</strong> {{ formatted }}</div>
+        <div><strong>Max Length:</strong> 11</div>
+        <div><strong>Current Length:</strong> {{ digitsOnly.length }}</div>
+        <div><strong>Valid:</strong> {{ isValid ? '✓ Yes' : '✗ No' }}</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const { createApp, ref, computed } = Vue;
+
+    // Copy of the formatting function
+    function getDigitsOnly(value) {
+      if (!value) return '';
+      return value.replace(/\D/g, '');
+    }
+
+    function formatPhoneNumber(value, format) {
+      if (!value || !format) return value || '';
+
+      const digits = getDigitsOnly(value);
+      let formatted = '';
+      let digitIndex = 0;
+
+      for (let i = 0; i < format.length && digitIndex < digits.length; i++) {
+        const formatChar = format[i];
+
+        if (formatChar === '#') {
+          formatted += digits[digitIndex];
+          digitIndex++;
+        } else {
+          if (digitIndex < digits.length) {
+            formatted += formatChar;
+          }
+        }
+      }
+
+      return formatted;
+    }
+
+    createApp({
+      setup() {
+        const rawInput = ref('');
+        const maxLength = 11;
+        const format = '(##) #####-####';
+
+        const digitsOnly = computed(() => getDigitsOnly(rawInput.value));
+
+        const formatted = computed(() => {
+          return formatPhoneNumber(digitsOnly.value, format);
+        });
+
+        const isValid = computed(() => {
+          return digitsOnly.value.length === maxLength;
+        });
+
+        const phoneModel = computed({
+          get() {
+            return formatted.value;
+          },
+          set(newValue) {
+            const digits = getDigitsOnly(newValue);
+
+            // Check max length
+            if (digits.length > maxLength) {
+              return; // Don't update if exceeds max
+            }
+
+            rawInput.value = newValue;
+          }
+        });
+
+        const onInput = (event) => {
+          console.log('Input event:', event.target.value);
+        };
+
+        return {
+          phoneModel,
+          rawInput,
+          digitsOnly,
+          formatted,
+          isValid,
+          onInput
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>

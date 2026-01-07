@@ -58,12 +58,12 @@
         :id="`phone-input-${uid}`"
         type="tel"
         class="phone-input"
+        v-model="inputModel"
         :placeholder="effectivePlaceholder"
         :disabled="disabled"
         :readonly="readonly"
         :required="required"
         :style="inputStyle"
-        @input="handleInput"
         @focus="handleFocus"
         @blur="handleBlur"
         @keydown="handleKeydown"
@@ -122,7 +122,7 @@ export default {
     const phoneInputRef = ref(null);
     const isFocused = ref(false);
     const hasBlurred = ref(false);
-    const localInputValue = ref('');
+    const isUpdating = ref(false);
 
     // Detect if in editor mode
     const isEditing = computed(() => {
@@ -204,6 +204,68 @@ export default {
       if (!currentCountry.value) return rawValue.value;
 
       return formatPhoneNumber(rawValue.value, currentCountry.value.format);
+    });
+
+    // Computed v-model for input with getter/setter
+    const inputModel = computed({
+      get() {
+        return displayValue.value;
+      },
+      set(newValue) {
+        if (isUpdating.value) return;
+        if (disabled.value || readonly.value) return;
+
+        isUpdating.value = true;
+
+        // Save cursor position
+        const inputElement = phoneInputRef.value;
+        const oldCursorPos = inputElement?.selectionStart || 0;
+        const oldValue = displayValue.value;
+
+        // Extract only digits
+        const digits = getDigitsOnly(newValue);
+
+        // Check max length
+        if (currentCountry.value && digits.length > currentCountry.value.maxLength) {
+          isUpdating.value = false;
+          return;
+        }
+
+        // Update raw value
+        setRawValue(digits);
+
+        // Update international number
+        const intlNumber = buildInternationalNumber(
+          currentCountry.value?.dialCode || '+55',
+          digits
+        );
+        setInternationalNumber(intlNumber);
+
+        // Validate
+        const valid = validatePhoneNumber();
+
+        // Emit change event
+        if (!isEditing.value) {
+          emit('trigger-event', {
+            name: 'change',
+            event: {
+              value: displayValue.value,
+              rawValue: digits,
+              countryCode: selectedCountryCode.value,
+              isValid: valid
+            }
+          });
+        }
+
+        // Restore cursor position after Vue updates DOM
+        setTimeout(() => {
+          if (inputElement && document.activeElement === inputElement) {
+            const newCursorPos = getNewCursorPosition(oldValue, displayValue.value, oldCursorPos);
+            inputElement.setSelectionRange(newCursorPos, newCursorPos);
+          }
+          isUpdating.value = false;
+        }, 0);
+      }
     });
 
     const showError = computed(() => {
@@ -301,71 +363,6 @@ export default {
     };
 
     // Event handlers
-    const handleInput = (event) => {
-      if (disabled.value || readonly.value) return;
-
-      const inputElement = event.target;
-      const newValue = inputElement.value;
-      const oldCursorPosition = inputElement.selectionStart;
-      const oldValue = localInputValue.value;
-
-      // Extract only digits
-      const digits = getDigitsOnly(newValue);
-
-      // Check max length - prevent input if exceeds
-      if (currentCountry.value && digits.length > currentCountry.value.maxLength) {
-        // Restore old value and cursor position
-        inputElement.value = oldValue;
-        inputElement.setSelectionRange(oldCursorPosition - 1, oldCursorPosition - 1);
-        return;
-      }
-
-      // Update raw value
-      setRawValue(digits);
-
-      // Format the number
-      const formatted = autoFormat.value && currentCountry.value
-        ? formatPhoneNumber(digits, currentCountry.value.format)
-        : digits;
-
-      // Update local input value
-      localInputValue.value = formatted;
-
-      // Update the input element value immediately
-      inputElement.value = formatted;
-
-      // Update international number
-      const intlNumber = buildInternationalNumber(
-        currentCountry.value?.dialCode || '+55',
-        digits
-      );
-      setInternationalNumber(intlNumber);
-
-      // Validate
-      const valid = validatePhoneNumber();
-
-      // Emit change event (only in preview/published)
-      if (!isEditing.value) {
-        emit('trigger-event', {
-          name: 'change',
-          event: {
-            value: formatted,
-            rawValue: digits,
-            countryCode: selectedCountryCode.value,
-            isValid: valid
-          }
-        });
-      }
-
-      // Calculate and set cursor position
-      const newCursorPosition = getNewCursorPosition(oldValue, formatted, oldCursorPosition);
-
-      // Use nextTick to ensure DOM is updated
-      setTimeout(() => {
-        inputElement.setSelectionRange(newCursorPosition, newCursorPosition);
-      }, 0);
-    };
-
     const handleFocus = () => {
       if (isEditing.value) return;
       isFocused.value = true;
@@ -479,7 +476,6 @@ export default {
       setInternationalNumber('');
       setIsValid(false);
       hasBlurred.value = false;
-      localInputValue.value = '';
     };
 
     const focusInput = () => {
@@ -505,11 +501,6 @@ export default {
       if (props.content?.value) {
         setValue(props.content.value);
       }
-
-      // Set initial input value
-      if (phoneInputRef.value) {
-        phoneInputRef.value.value = localInputValue.value;
-      }
     });
 
     // Watch for external value changes
@@ -526,18 +517,10 @@ export default {
       }
     });
 
-    // Sync localInputValue with displayValue
-    watch(displayValue, (newValue) => {
-      localInputValue.value = newValue;
-      // Also update the input element value
-      if (phoneInputRef.value && document.activeElement !== phoneInputRef.value) {
-        phoneInputRef.value.value = newValue;
-      }
-    }, { immediate: true });
 
     return {
       phoneInputRef,
-      localInputValue,
+      inputModel,
       isFocused,
       hasBlurred,
       isEditing,
@@ -569,7 +552,6 @@ export default {
       selectorBackgroundColor,
       selectorHoverBackgroundColor,
       dropdownMaxHeight,
-      handleInput,
       handleFocus,
       handleBlur,
       handleKeydown,
